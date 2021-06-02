@@ -4,6 +4,7 @@ import (
 	"log"
 
 	"github.com/BurntSushi/toml"
+	"github.com/Vitokz/Moysklad/file"
 	"github.com/Vitokz/Moysklad/handler"
 	"github.com/Vitokz/Moysklad/models"
 	"github.com/Vitokz/Moysklad/proto"
@@ -11,15 +12,16 @@ import (
 )
 
 func main() {
-	config := models.NewConfig()
-	_, err := toml.DecodeFile(proto.CONFIG_REST_PATH, config)
+	config := models.NewConfig()  //Создаю модель конфига 
+	_, err := toml.DecodeFile(proto.CONFIG_REST_PATH, config) //Заполняю модель конфига с помощью toml	
 	if err != nil {
 		log.Fatal()
 	}
 
-	handler := handler.NewHandler()
+	file := file.NewFileOpen()  //Открываю xlsx ФАИЛ C с соотношениями из 1с
+	handler := handler.NewHandler(file) //Создаю хэндлер и засовываю туда структуру открытого файла
 
-	rest := server.New(handler, config)
+	rest := server.New(handler, config)  //Создаю Rest Api localhost
 
-	rest.Start()
+	rest.Start() //Запускаю свой api
 }

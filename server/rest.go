@@ -9,28 +9,31 @@ import (
 	"github.com/sirupsen/logrus"
 )
 
-type Rest struct {
+type Rest struct { //Структура моего сервера
 	Config  *models.Config
 	Logger  *logrus.Logger
 	Router  *echo.Echo
 	Handler *handler.Handler
+	Token   *models.Token
 }
 
-func New(handler *handler.Handler, conf *models.Config) *Rest {
+func New(handler *handler.Handler, conf *models.Config) *Rest { //Создание настроек моего сервера
 	return &Rest{
 		Config:  conf,
 		Logger:  logrus.New(),
 		Router:  echo.New(),
 		Handler: handler,
+		Token:   &models.Token{},
 	}
 }
 
-func (r *Rest) getRoutes() {
+func (r *Rest) getRoutes() { //Ф-ция эндпоинтов
 	r.Router.GET("/", r.GetTask)
 	r.Router.GET("/auth", r.Auth)
+	r.Router.GET("/sort", r.AddDescription)
 }
 
-func (r *Rest) Start() {
+func (r *Rest) Start() { //Запуск сервера
 	err := r.configureLogger()
 	if err != nil {
 		r.Logger.WithError(err).Error()
@@ -41,7 +44,7 @@ func (r *Rest) Start() {
 	r.Router.Logger.Fatal(r.Router.Start(r.Config.Addr))
 }
 
-func (r *Rest) configureLogger() error {
+func (r *Rest) configureLogger() error { //Настройка Логгера
 	level, err := logrus.ParseLevel(r.Config.LogLevel)
 	if err != nil {
 		return err
