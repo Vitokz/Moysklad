@@ -31,6 +31,11 @@ func (r *Rest) getRoutes() { //Ф-ция эндпоинтов
 	r.Router.GET("/", r.GetTask)
 	r.Router.GET("/auth", r.Auth)
 	r.Router.GET("/sort", r.AddDescription)
+	r.Router.GET("/createPrice", r.CreatePrice)
+	r.Router.GET("/makeSupply", r.MakeSupply)
+	r.Router.GET("/makeProduct", r.MakeProduct)
+	r.Router.GET("/refactorProduct",r.RefactorProduct)
+	//Добавить эндпоинты получения контр агентов,Добавить получение складов, добавить получение юр лица
 }
 
 func (r *Rest) Start() { //Запуск сервера
