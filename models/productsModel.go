@@ -15,20 +15,6 @@ type Rows struct { //Структура для json ответа запроса 
 	Rows []Product `json:"rows"`
 }
 
-type CSVProductsFinal struct {
-	Number string `csv:"№"`
-	Name   string `csv:"Наименование"`
-	Count  int    `csv:"Кол-во"`
-	Price  int    `csv:"Цена"`
-	Summ   int    `cvs:"Итоговая сумма"`
-}
-type CSVProductsInMS struct {
-	Id          string `json:"id"`
-	Code        string `json:"code"`
-	Name        string `json:"name"`
-	Description string `json:"description"`
-}
-type CSVRows struct {
-	Rows []CSVProductsInMS `json:"rows"`
-}
+
+
 

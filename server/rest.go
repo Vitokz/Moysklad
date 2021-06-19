@@ -6,6 +6,7 @@ import (
 	"github.com/Vitokz/Moysklad/handler"
 	"github.com/Vitokz/Moysklad/models"
 	"github.com/labstack/echo"
+	"github.com/labstack/echo/middleware"
 	"github.com/sirupsen/logrus"
 )
 
@@ -28,13 +29,14 @@ func New(handler *handler.Handler, conf *models.Config) *Rest { //Создани
 }
 
 func (r *Rest) getRoutes() { //Ф-ция эндпоинтов
+	r.Router.Use(middleware.CORS())
 	r.Router.GET("/", r.GetTask)
 	r.Router.GET("/auth", r.Auth)
 	r.Router.GET("/sort", r.AddDescription)
-	r.Router.GET("/createPrice", r.CreatePrice)
-	r.Router.GET("/makeSupply", r.MakeSupply)
-	r.Router.GET("/makeProduct", r.MakeProduct)
-	r.Router.GET("/refactorProduct",r.RefactorProduct)
+	r.Router.POST("/makeSupply", r.MakeSupply)
+	r.Router.POST("/addOrRefactor", r.addOrRefactor)
+	//r.Router.POST("/makeProduct", r.MakeProduct)
+	//r.Router.GET("/refactorProduct", r.RefactorProduct)
 	//Добавить эндпоинты получения контр агентов,Добавить получение складов, добавить получение юр лица
 }
 
@@ -45,7 +47,6 @@ func (r *Rest) Start() { //Запуск сервера
 		os.Exit(1)
 	}
 	r.getRoutes()
-
 	r.Router.Logger.Fatal(r.Router.Start(r.Config.Addr))
 }
 

@@ -6,15 +6,17 @@ import (
 	"encoding/csv"
 	"encoding/json"
 	"fmt"
+	"io"
 	"io/ioutil"
+	"mime/multipart"
 	"net/http"
 	"os"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/Vitokz/Moysklad/models"
 	"github.com/Vitokz/Moysklad/proto"
-	"github.com/gocarina/gocsv"
 	"github.com/labstack/echo"
 	"github.com/sirupsen/logrus"
 )
@@ -23,6 +25,9 @@ import (
 func (r *Rest) GetTask(c echo.Context) error {
 	r.Logger.WithFields(logrus.Fields{
 		"event": "Test endpoint",
+	}).Println()
+	r.Logger.WithFields(logrus.Fields{
+		"event": c.FormValue("name"),
 	}).Println()
 	return c.JSON(http.StatusOK, r.Token)
 }
@@ -50,9 +55,18 @@ func (r *Rest) Auth(c echo.Context) error {
 		r.Logger.Errorf("Failed : %s\n", err)
 		return echo.NewHTTPError(http.StatusInternalServerError)
 	}
+	err = checkError(bodyText)
+	if err != nil {
+		r.Logger.Errorf("Failed : %s\n", err)
+		return echo.NewHTTPError(http.StatusInternalServerError)
+	}
 	token := models.Token{}
-	json.Unmarshal([]byte(bodyText), &token) //Перезаписываю []byte в JSON
 
+	err = json.Unmarshal([]byte(bodyText), &token) //Перезаписываю []byte в JSON
+	if err != nil {
+		r.Logger.Errorf("Failed : %s\n", err)
+		return echo.NewHTTPError(http.StatusInternalServerError)
+	}
 	r.Logger.WithFields(logrus.Fields{
 		"statusAuth": "OK",
 	}).Println()
@@ -63,6 +77,15 @@ func (r *Rest) Auth(c echo.Context) error {
 func basicAuth(username, password string) string { // Функция относящаяся к auth
 	auth := username + ":" + password
 	return base64.StdEncoding.EncodeToString([]byte(auth))
+}
+func checkError(text []byte) error {
+	erro := models.Errors{}
+	err := json.Unmarshal([]byte(text), &erro)
+	_ = err
+	if count := len(erro.Error); count != 0 {
+		return fmt.Errorf("Failed : %s\n", erro.Error[0].Er)
+	}
+	return nil
 }
 
 //Эндпоинт /Sort
@@ -111,6 +134,11 @@ func (r *Rest) takeProducts() (*models.Rows, error) {
 	bodyText, err := ioutil.ReadAll(resp.Body)
 	if err != nil {
 		r.Logger.WithError(err).Error()
+		return nil, err
+	}
+	err = checkError(bodyText)
+	if err != nil {
+		r.Logger.Errorf("Failed : %s\n", err)
 		return nil, err
 	}
 	result := new(models.Rows)
@@ -173,173 +201,96 @@ func (r *Rest) requestToPut(m models.Product) error { // Функция отно
 	req.Header.Add("Authorization", "Bearer "+r.Token.Access_token)
 	req.Header.Set("Content-Type", "application/json; charset=UTF-8")
 
-	/*resp*/
-	_, err = client.Do(req)
-	if err != nil {
-		r.Logger.Errorf("Failed processing take products request: %s\n", err)
-		return err
-	}
-	// bodyText, err := ioutil.ReadAll(resp.Body)
-	// if err != nil {
-	// 	r.Logger.WithError(err).Error()
-	// 	return err
-	// }
-	return nil
-}
-
-//Эндпоинт /createPrice
-func (r *Rest) CreatePrice(c echo.Context) error {
-	r.Logger.WithFields(logrus.Fields{
-		"event": "Start creationg pricelist",
-	})
-	file, err := openCSV("Предварительный_счёт.csv")
-	if err != nil {
-		r.Logger.Error(err)
-	}
-	productsInMS, err := r.CSVtakeProducts()
-	if err != nil {
-		r.Logger.Error(err)
-	}
-	name, err := createFinalCsv(file, *productsInMS)
-	if err != nil {
-		r.Logger.Error(err)
-	}
-	r.Logger.Println()
-	return c.JSON(http.StatusOK, name)
-}
-
-func openCSV(name string) (*os.File, error) {
-	file, err := os.Open("proto/priceList/" + name)
-	if err != nil {
-		return nil, err
-	}
-	return file, nil
-}
-func (r *Rest) CSVtakeProducts() (*models.CSVRows, error) {
-	r.Logger.WithFields(logrus.Fields{
-		"event": "Start to taking products MS (CSV)",
-		"token": r.Token.Access_token,
-	})
-	client := &http.Client{}
-
-	req, err := http.NewRequest("GET", proto.PRODUCTS_IN_MY_SKLAD, nil)
-	if err != nil {
-		r.Logger.Errorf("Failed : %s\n", err)
-		return nil, err
-	}
-	req.Header.Add("Authorization", "Bearer "+r.Token.Access_token)
 	resp, err := client.Do(req)
 	if err != nil {
 		r.Logger.Errorf("Failed processing take products request: %s\n", err)
-		return nil, err
+		return echo.NewHTTPError(http.StatusInternalServerError)
 	}
 	bodyText, err := ioutil.ReadAll(resp.Body)
 	if err != nil {
 		r.Logger.WithError(err).Error()
-		return nil, err
+		return echo.NewHTTPError(http.StatusInternalServerError)
 	}
-	result := new(models.CSVRows)
-	r.Logger.WithFields(logrus.Fields{
-		"status": "ok",
-	}).Println()
-	json.Unmarshal([]byte(bodyText), &result)
-	return result, nil
-}
-func createFinalCsv(file *os.File, products models.CSVRows) (string, error) {
-	new, err := os.Create("result.csv")
+	err = checkError(bodyText)
 	if err != nil {
-		return "", err
+		r.Logger.Errorf("Failed : %s\n", err)
+		return echo.NewHTTPError(http.StatusInternalServerError)
 	}
-	writer := csv.NewWriter(new)
-	defer writer.Flush()
-	allWriters, err := checkSimilar(file, products)
-	if err != nil {
-		return "", err
-	}
-	file.Close()
-	gocsv.MarshalFile(allWriters, new)
-	return "result.csv", nil
-}
-func checkSimilar(file *os.File, products models.CSVRows) (*[]models.CSVProductsFinal, error) {
-	//Для предварительного счета поля: 0-номер,1-имя,6-цена,8-кол-во,9-вид ед измерения,10-сумма
-	result := make([]models.CSVProductsFinal, 0)
-
-	reader := csv.NewReader(file)
-	for {
-		record, e := reader.Read()
-		if e != nil {
-			fmt.Println(e)
-			break
-		}
-		tp, _ := strconv.Atoi(record[0])
-		if tp == 0 {
-			continue
-		} else {
-		loop:
-			for _, v := range products.Rows {
-				aliases := strings.Split(v.Description, ";")
-				for _, s := range aliases {
-					if s == record[1] {
-						count, err := strconv.ParseFloat(record[8], 64)
-						if err != nil {
-							return nil, err
-						}
-						price, err := strconv.ParseFloat(record[6], 64)
-						if err != nil {
-							return nil, err
-						}
-						result = append(result, models.CSVProductsFinal{
-							Number: record[0],
-							Name:   v.Name,
-							Count:  int(count),
-							Price:  int(price),
-							Summ:   int(count * price),
-						})
-						break loop
-					}
-				}
-			}
-		}
-	}
-	return &result, nil
+	return nil
 }
 
 //Эндпоинт /makeSupply
 func (r *Rest) MakeSupply(c echo.Context) error {
+
 	r.Logger.WithFields(logrus.Fields{
-		"event": "Start creating Supply",
-	})
-	supply, err := makeNewSupplyInMS(r.Token.Access_token) //Создание новой приемки в мойсклад
+		"event": "Start creating Supply", // Добавить проверку на входные данные
+	}).Print()
+
+	nameSupply := c.FormValue("name")
+	if nameSupply == "" {
+		r.Logger.Error(fmt.Errorf("поле nameSupply пустует"))
+		return echo.NewHTTPError(http.StatusInternalServerError)
+	}
+
+	nameAgent := c.FormValue("agent")
+	if nameAgent == "" {
+		r.Logger.Error(fmt.Errorf("поле nameAgent пустует"))
+		return echo.NewHTTPError(http.StatusInternalServerError)
+	}
+
+	newFile, err := c.FormFile("file")
 	if err != nil {
 		r.Logger.Errorf("Failed: %v", err)
 		return err
 	}
-	file, err := openCSV("Предварительный_счёт.csv") //Открытие csv файла поставщика
+
+	fileName, err := createFile(*newFile)
 	if err != nil {
 		r.Logger.Errorf("Failed: %v", err)
 		return err
 	}
-	products, err := CSVRows(file) //Парсинг файла(Достает все строки с товарами и берет нужную информацию)
+
+	supply, err := makeNewSupplyInMS(r.Token.Access_token, nameSupply, nameAgent) //Создание новой приемки в мойсклад
 	if err != nil {
 		r.Logger.Errorf("Failed: %v", err)
 		return err
 	}
-	err = findProductsInMs(*products, r.Token.Access_token, supply.Id) //Поиск продукта в мойсклад и в случае успеха добавление в приемку
+
+	file, err := openCSV(fileName) //Открытие csv файла поставщика
 	if err != nil {
 		r.Logger.Errorf("Failed: %v", err)
 		return err
 	}
+
+	products, err := CSVRows(file, nameAgent) //Парсинг файла(Достает все строки с товарами и берет нужную информацию)
+	if err != nil {
+		r.Logger.Errorf("Failed: %v", err)
+		return err
+	}
+
+	err, exceptions := findProductsInMs(*products, r.Token.Access_token, supply.Id) //Поиск продукта в мойсклад и в случае успеха добавление в приемку
+	if err != nil {
+		r.Logger.Errorf("Failed: %v", err)
+		return err
+	}
+
+	_ = exceptions
 	r.Logger.WithFields(logrus.Fields{
 		"status": "ok",
 	})
-	return c.JSON(http.StatusOK, supply)
+	result := models.SupplyResult{
+		Id:         supply.Id,
+		Exceptions: exceptions,
+	}
+	os.Remove(proto.NEW_FILE_XLS)
+	os.Remove(proto.NEW_FILE_CSV)
+	return c.JSON(http.StatusOK, result)
 }
 
-func makeNewSupplyInMS(id string) (models.Supply, error) {
-	supplyData := models.MakeNewSupply() //Создание модели с данными приемки (на данный момент все заполнено статически)
-	client := &http.Client{}             //Создание клиента запроса
-
-	mes, err := json.Marshal(supplyData) //Первод в []byte модели приемки
+func makeNewSupplyInMS(id string, nameSupply string, nameAgent string) (models.Supply, error) {
+	supplyData := models.MakeNewSupply(nameSupply, nameAgent, id) //Создание модели с данными приемки (на данный момент все заполнено статически)
+	client := &http.Client{}                                      //Создание клиента запроса
+	mes, err := json.Marshal(supplyData)                          //Первод в []byte модели приемки
 	if err != nil {
 		return models.Supply{}, err
 	}
@@ -360,52 +311,68 @@ func makeNewSupplyInMS(id string) (models.Supply, error) {
 	if err != nil {
 		return models.Supply{}, err
 	}
+	err = checkError(bodyText)
+	if err != nil {
+		return models.Supply{}, err
+	}
 	result := new(models.Supply) // Модель Supply Содержит в себе только id приемки
 	json.Unmarshal([]byte(bodyText), result)
 	return *result, nil
 } //+
-func CSVRows(file *os.File) (*[]models.CsvProducts, error) {
+
+func CSVRows(file *os.File, agent string) (*[]models.CsvProducts, error) {
 	defer file.Close() //Закрытие файла по окончании ф-ции
 	//Для предварительного счета поля: 0-номер,1-имя,6-цена,8-кол-во,9-вид ед измерения,10-сумма
 	result := make([]models.CsvProducts, 0) //Создание массива моделей товаров поставщика csv
 
+	numbers := proto.StatCSVFile(agent)
 	reader := csv.NewReader(file) //Чтение файла
 	for {
 		record, e := reader.Read() //Беру одну строку
 		if e != nil {
-			fmt.Println(e)
+
 			break
 		}
-		tp, _ := strconv.Atoi(record[0]) //Проверяю первый символ строки на наличие числа ,так как это отлич знак товара
+		tp, _ := strconv.Atoi(record[numbers.Number]) //Проверяю первый символ строки на наличие числа ,так как это отлич знак товара
 		if tp == 0 {
 			continue
 		} else {
-			count, err := strconv.ParseFloat(record[8], 64)
+			count, err := strconv.ParseFloat(record[numbers.Count], 64)
+			if err != nil {
+				return nil, err
+			}
+			price, err := strconv.ParseFloat(record[numbers.Price], 64)
 			if err != nil {
 				return nil, err
 			}
 			result = append(result, models.CsvProducts{
 				Count: int(count),
-				Name:  record[1],
+				Name:  record[numbers.Name],
+				Price: price,
 			})
 		}
 	}
 	return &result, nil
 } //+
-func findProductsInMs(products []models.CsvProducts, idUser string, idSupply string) error {
+func findProductsInMs(products []models.CsvProducts, idUser string, idSupply string) (error, []models.CsvProducts) {
+
+	exception := make([]models.CsvProducts, 0)
+
 	for _, v := range products {
 		check, err, ok := searchProduct(v, idUser) //Поиск продукта в списке товаров в Мойсклад
 		if err != nil {
-			return err
+			return err, exception
 		}
 		if ok {
 			err := addPositionInSupply(check, idSupply, idUser) //Добавление продукта в приемку
 			if err != nil {
-				return err
+				return err, exception
 			}
+		} else {
+			exception = append(exception, v)
 		}
 	}
-	return nil
+	return nil, exception
 }
 
 func searchProduct(product models.CsvProducts, idUser string) (models.ProductDataInMS, error, bool) {
@@ -428,6 +395,11 @@ func searchProduct(product models.CsvProducts, idUser string) (models.ProductDat
 	}
 
 	bodyText, err := ioutil.ReadAll(resp.Body) //Обработка ответа
+	if err != nil {
+		return models.ProductDataInMS{}, err, false
+	}
+
+	err = checkError(bodyText)
 	if err != nil {
 		return models.ProductDataInMS{}, err, false
 	}
@@ -466,77 +438,108 @@ func addPositionInSupply(product models.ProductDataInMS, idSupply string, idUser
 	if err != nil {
 		return err
 	}
-	_ = bodyText
-	fmt.Println(string(bodyText))
+	err = checkError(bodyText)
+	if err != nil {
+		return err
+	}
 	return nil
 }
 
+func createFile(file multipart.FileHeader) (string, error) {
+	err := createFileInput(file)
+	if err != nil {
+		return "", err
+	}
+
+	name, err := createFileCsv()
+	if err != nil {
+		return "", err
+	}
+	return name, nil
+}
+
+func openCSV(name string) (*os.File, error) {
+	file, err := os.Open(name)
+	if err != nil {
+		return nil, err
+	}
+	return file, nil
+}
+
 // Эндпоинт /makeProduct
-func (r *Rest) MakeProduct(c echo.Context) error {
+func (r *Rest) MakeProduct(name string, price float64, desc string, c echo.Context) (models.ProductDataInMS, error) {
 	r.Logger.WithFields(logrus.Fields{
 		"event": "Start creating Product",
 	}).Print()
-	product := models.NewProductModel("Darova", 64)
-	err := addProductInMS(product, r.Token.Access_token)
+
+	product := models.NewProductModel(name, desc, price)
+
+	new, err := addProductInMS(product, r.Token.Access_token)
 	if err != nil {
-		r.Logger.Error(err)
-		return echo.NewHTTPError(http.StatusInternalServerError)
+		return models.ProductDataInMS{}, err
 	}
 	r.Logger.WithFields(logrus.Fields{
 		"status": "ok",
 	}).Println()
-	return c.JSON(http.StatusOK, "all okey")
+	return new, nil
 }
 
-func addProductInMS(product *models.NewProduct, id string) error {
+func addProductInMS(product *models.NewProduct, id string) (models.ProductDataInMS, error) {
+	new := models.ProductDataInMS{}
 
 	mes, err := json.Marshal(product) //Кодирование
 	if err != nil {
-		return err
+		return models.ProductDataInMS{}, err
 	}
 
 	client := &http.Client{}
 	req, err := http.NewRequest("POST", proto.PRODUCTS_IN_MY_SKLAD, bytes.NewBuffer(mes))
 	if err != nil {
-		return err
+		return models.ProductDataInMS{}, err
 	}
 	req.Header.Add("Authorization", "Bearer "+id)
 	req.Header.Set("Content-Type", "application/json; charset=UTF-8")
 	resp, err := client.Do(req)
 	if err != nil {
-		return err
+		return models.ProductDataInMS{}, err
 	}
 	bodyText, err := ioutil.ReadAll(resp.Body)
 	if err != nil {
-		return err
+		return models.ProductDataInMS{}, err
 	}
-	_ = bodyText
-	return nil
+	err = checkError(bodyText)
+	if err != nil {
+		return models.ProductDataInMS{}, err
+	}
+	err = json.Unmarshal([]byte(bodyText), &new)
+	if err != nil {
+		return models.ProductDataInMS{}, err
+	}
+	return new, nil
 }
 
 // Эндпоинт /refactorProduct
-func (r *Rest) RefactorProduct(c echo.Context) error {
+func (r *Rest) RefactorProduct(nomecl, name string, c echo.Context) (models.ProductDataInMS, error) {
 	r.Logger.WithFields(logrus.Fields{
 		"event": "Start refactoring Product",
 	}).Print()
-	product, err := searchProductForRefactor("Drova", r.Token.Access_token)
+
+	product, err := searchProductForRefactor(nomecl, r.Token.Access_token)
 	if err != nil {
-		r.Logger.Error(err)
-		return echo.NewHTTPError(http.StatusInternalServerError)
+		return models.ProductDataInMS{}, err
 	}
 
-	product.Description += ";Darova esd"
+	product.Description += ";" + name
 
-	err = refactorProduct(product, r.Token.Access_token)
+	refactor, err := refactorProduct(product, r.Token.Access_token)
 	if err != nil {
-		r.Logger.Error(err)
-		return echo.NewHTTPError(http.StatusInternalServerError)
+		return models.ProductDataInMS{}, err
 	}
 
 	r.Logger.WithFields(logrus.Fields{
 		"status": "ok",
 	}).Println()
-	return c.JSON(http.StatusOK, "all okey")
+	return refactor, nil
 }
 
 func searchProductForRefactor(productName string, idUser string) (models.RefactorProductsInMS, error) {
@@ -562,6 +565,10 @@ func searchProductForRefactor(productName string, idUser string) (models.Refacto
 	if err != nil {
 		return models.RefactorProductsInMS{}, err
 	}
+	err = checkError(bodyText)
+	if err != nil {
+		return models.RefactorProductsInMS{}, err
+	}
 
 	rows := new(models.RowsForRefactor) //Создание модели для получения ответа от мойсклад
 	json.Unmarshal([]byte(bodyText), &rows)
@@ -572,31 +579,274 @@ func searchProductForRefactor(productName string, idUser string) (models.Refacto
 	return result, nil //Возврат готовой модели товара из МойСклад
 }
 
-func refactorProduct(product models.RefactorProductsInMS, id string) error {
+func refactorProduct(product models.RefactorProductsInMS, id string) (models.ProductDataInMS, error) {
+	refactor := models.ProductDataInMS{}
 	client := &http.Client{} //Создание клиента запроса
 
 	mes, err := json.Marshal(product) //Первод в []byte модели товара
 	if err != nil {
-		return err
+		return models.ProductDataInMS{}, err
 	}
 
 	url := proto.PRODUCTS_IN_MY_SKLAD + "/" + product.Id          //Создание урла запроса
 	req, err := http.NewRequest("PUT", url, bytes.NewBuffer(mes)) //Сам запрос
 	if err != nil {
-		return err
+		return models.ProductDataInMS{}, err
 	}
 	req.Header.Add("Authorization", "Bearer "+id)
 	req.Header.Set("Content-Type", "application/json; charset=UTF-8")
 
-	/*resp*/
-	_, err = client.Do(req)
+	resp, err := client.Do(req)
+	if err != nil {
+		return models.ProductDataInMS{}, err
+	}
+	bodyText, err := ioutil.ReadAll(resp.Body)
+	if err != nil {
+		return models.ProductDataInMS{}, err
+	}
+	err = checkError(bodyText)
+	if err != nil {
+		return models.ProductDataInMS{}, err
+	}
+	err = json.Unmarshal([]byte(bodyText), &refactor)
+	if err != nil {
+		return models.ProductDataInMS{}, err
+	}
+	return refactor, nil
+}
+
+//Эндпоинт /addOrRefactor
+func (r *Rest) addOrRefactor(c echo.Context) error {
+	r.Logger.WithFields(logrus.Fields{
+		"event": "Start refactoring Product",
+	}).Print()
+
+	final := models.ProductDataInMS{}
+	name := strings.Replace(c.FormValue("name"), "@", " ", -1) //Перевести то потом в структуру ,Сделать валидацию
+	if name == "" {
+		r.Logger.Error(fmt.Errorf("поле name пустует"))
+		return echo.NewHTTPError(http.StatusInternalServerError)
+	}
+	nomecl := c.FormValue("nomencl")
+	if nomecl == "" {
+		r.Logger.Error(fmt.Errorf("поле namecl пустует"))
+		return echo.NewHTTPError(http.StatusInternalServerError)
+	}
+	count, err := strconv.Atoi(c.FormValue("count"))
+	if err != nil {
+		r.Logger.Error(err)
+		return echo.NewHTTPError(http.StatusInternalServerError)
+	}
+	if count == 0 {
+		r.Logger.Error(fmt.Errorf("поле namecl пустует"))
+		return echo.NewHTTPError(http.StatusInternalServerError)
+	}
+	price, err := strconv.ParseFloat(c.FormValue("price"), 64)
+	if err != nil {
+		r.Logger.Error(err)
+		return echo.NewHTTPError(http.StatusInternalServerError)
+	}
+	idSupply := c.FormValue("id")
+	if nomecl == "" {
+		r.Logger.Error(fmt.Errorf("поле id пустует"))
+		return echo.NewHTTPError(http.StatusInternalServerError)
+	}
+	whatDo := c.FormValue("whatDo")
+	if whatDo == "new" {
+		final, err = r.MakeProduct(nomecl, price, name, c)
+		if err != nil {
+			r.Logger.Error(err)
+			return echo.NewHTTPError(http.StatusInternalServerError)
+		}
+	} else if whatDo == "refactor" {
+		final, err = r.RefactorProduct(nomecl, name, c)
+		if err != nil {
+			r.Logger.Error(err)
+			return echo.NewHTTPError(http.StatusInternalServerError)
+		}
+	} else {
+		return echo.NewHTTPError(http.StatusInternalServerError)
+	}
+	final.Count = count
+	err = addPositionInSupply(final, idSupply, r.Token.Access_token) //Добавление продукта в приемку
+	if err != nil {
+		r.Logger.Error(err)
+		return echo.NewHTTPError(http.StatusInternalServerError)
+	}
+	r.Logger.WithFields(logrus.Fields{
+		"status": "ok",
+	}).Println()
+	return c.JSON(http.StatusOK, "ok")
+}
+
+// Относящиеся к createFile ф-ции методы
+
+func createFileInput(file multipart.FileHeader) error {
+	src, err := file.Open()
 	if err != nil {
 		return err
 	}
-	// bodyText, err := ioutil.ReadAll(resp.Body)
-	// if err != nil {
-	// 	r.Logger.WithError(err).Error()
-	// 	return err
-	// }
+	defer src.Close()
+
+	dst, err := os.Create(proto.NEW_FILE_XLS)
+	if err != nil {
+		return err
+	}
+	defer dst.Close()
+
+	// Copy
+	if _, err = io.Copy(dst, src); err != nil {
+		return err
+	}
 	return nil
 }
+func createFileCsv() (string, error) {
+	new, err := addNewConvertFile()
+	if err != nil {
+		return "", err
+	}
+
+	final, err := finalNewConvertFile(new.Data.Id)
+	if err != nil {
+		return "", err
+	}
+
+	time.Sleep(3 * time.Second)
+
+	url, err := takeUrl(final.Data.Id)
+	if err != nil {
+		return "", err
+	}
+
+	err = downloadFile(proto.NEW_FILE_CSV, url.Data.Output.Url)
+	if err != nil {
+		return "", err
+	}
+	return proto.NEW_FILE_CSV, err
+}
+
+//
+func addNewConvertFile() (*models.ConvertFileResponse, error) {
+	var result = new(models.ConvertFileResponse)
+	data := models.ConvertFile{
+		Apikey:       "a86cdbd799a71c05f50b8a2bc556515e",
+		Input:        "upload",
+		OutputFormat: "CSV",
+	}
+
+	mes, err := json.Marshal(data) //Кодирование
+	if err != nil {
+		return result, err
+	}
+
+	client := &http.Client{}
+	req, err := http.NewRequest("POST", "https://api.convertio.co/convert", bytes.NewBuffer(mes))
+	if err != nil {
+		return result, err
+	}
+
+	resp, err := client.Do(req)
+	if err != nil {
+		return result, err
+	}
+
+	bodyText, err := ioutil.ReadAll(resp.Body)
+	if err != nil {
+		return result, err
+	}
+
+	var er = new(models.ConvertFileError)
+	err = json.Unmarshal([]byte(bodyText), &result)
+	if err != nil {
+		return result, err
+	}
+
+	if result.Status != "ok" {
+		return result, fmt.Errorf("%v", er.Err)
+	}
+	return result, err
+}
+func finalNewConvertFile(id string) (*models.ConvertFileFinal, error) {
+	result := new(models.ConvertFileFinal)
+
+	data, err := os.Open(proto.NEW_FILE_XLS)
+	if err != nil {
+		return result, err
+	}
+
+	client := &http.Client{}
+	url := "http://api.convertio.co/convert/" + id + "/" + "Товары.xls"
+	req, err := http.NewRequest("PUT", url, data)
+	if err != nil {
+		return result, err
+	}
+
+	req.Header.Set("Content-Type", "text/plain")
+	resp, err := client.Do(req)
+	if err != nil {
+		return result, err
+	}
+
+	bodyText, err := ioutil.ReadAll(resp.Body)
+	if err != nil {
+		return result, err
+	}
+
+	var er = new(models.ConvertFileError)
+	json.Unmarshal([]byte(bodyText), &result)
+	if result.Status != "ok" {
+		json.Unmarshal([]byte(bodyText), &er)
+		return result, fmt.Errorf(er.Err)
+	}
+	return result, err
+}
+func takeUrl(id string) (*models.ReadyFile, error) {
+	result := new(models.ReadyFile)
+
+	client := &http.Client{}
+	url := "https://api.convertio.co/convert/" + id + "/" + "status"
+	req, err := http.NewRequest("GET", url, nil)
+	if err != nil {
+		return result, err
+	}
+
+	resp, err := client.Do(req)
+	if err != nil {
+		return result, err
+	}
+
+	bodyText, err := ioutil.ReadAll(resp.Body)
+	if err != nil {
+		return result, err
+	}
+
+	var er = new(models.ConvertFileError)
+	json.Unmarshal([]byte(bodyText), &result)
+	if result.Status != "ok" {
+		json.Unmarshal([]byte(bodyText), &er)
+		return result, fmt.Errorf(er.Err)
+	}
+	return result, err
+}
+func downloadFile(filepath string, url string) error {
+
+	// Get the data
+	resp, err := http.Get(url)
+	if err != nil {
+		return err
+	}
+	defer resp.Body.Close()
+
+	// Create the file
+	out, err := os.Create(filepath)
+	if err != nil {
+		return err
+	}
+	defer out.Close()
+
+	// Write the body to file
+	_, err = io.Copy(out, resp.Body)
+	return err
+}
+
+//

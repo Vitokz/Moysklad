@@ -1,5 +1,14 @@
 package models
 
+import (
+	"encoding/json"
+	"fmt"
+	"io/ioutil"
+	"net/http"
+
+	"github.com/Vitokz/Moysklad/proto"
+)
+
 type NewSupply struct { //Модель данных для создание приемки
 	Name        string             `json:"name"`         //Имя приемки
 	Organiztion SupplyOrganization `json:"organization"` //Ссылка на на твою организацию
@@ -28,8 +37,9 @@ type Supply struct { // Структура с id свежесозданной п
 }
 
 type CsvProducts struct { //Структура товаров взятых из CSv файла
-	Name  string //csv name
-	Count int    //csv count
+	Name  string `json:"name"`
+	Count int    `json:"count"`
+	Price float64   `json:"price"`
 }
 
 type SearchProductInMS struct { //Структура для обработки запроса поиска в rows находятся все подхдящие ответы
@@ -65,9 +75,22 @@ func NewSupplyPosition(m ProductDataInMS) *SupplyPostion {
 	}
 }
 
-func MakeNewSupply() *NewSupply {
+func MakeNewSupply(nameSupply string, nameAgent string, id string) *NewSupply {
+	agent, err := SearchAgent(nameAgent, id)
+	_ = err
+	if nameAgent == "Предваритеный счет" {
+		agent = SupplyAgent{
+			Meta: Meta{
+				Href:         "https://online.moysklad.ru/api/remap/1.2/entity/counterparty/db58c2b4-c1f0-11eb-0a80-007c001a57b0",
+				MetadataHref: "https://online.moysklad.ru/api/remap/1.2/entity/counterparty/metadata",
+				Type:         "counterparty",
+				MediaType:    "application/json",
+				UuidHref:     "https://online.moysklad.ru/app/#company/edit?id=db58c2b4-c1f0-11eb-0a80-007c001a57b0",
+			},
+		}
+	}
 	return &NewSupply{
-		Name: "12",
+		Name: nameSupply,
 		Organiztion: SupplyOrganization{
 			Meta: Meta{
 				Href:         "https://online.moysklad.ru/api/remap/1.2/entity/organization/db577e9f-c1f0-11eb-0a80-007c001a57ad",
@@ -86,14 +109,46 @@ func MakeNewSupply() *NewSupply {
 				UuidHref:     "https://online.moysklad.ru/app/#warehouse/edit?id=db58bba2-c1f0-11eb-0a80-007c001a57af",
 			},
 		},
-		Agent: SupplyAgent{
-			Meta: Meta{
-				Href:         "https://online.moysklad.ru/api/remap/1.2/entity/counterparty/db58c2b4-c1f0-11eb-0a80-007c001a57b0",
-				MetadataHref: "https://online.moysklad.ru/api/remap/1.2/entity/counterparty/metadata",
-				Type:         "counterparty",
-				MediaType:    "application/json",
-				UuidHref:     "https://online.moysklad.ru/app/#company/edit?id=db58c2b4-c1f0-11eb-0a80-007c001a57b0",
-			},
-		},
+		Agent: agent,
 	}
+}
+func SearchAgent(nameAgent, idUser string) (SupplyAgent, error) {
+	client := &http.Client{} //Создание клиента запроса
+
+	url := proto.COUNTERPARTY_URL
+	req, err := http.NewRequest("GET", url, nil) //Создание запроса
+	if err != nil {
+		return SupplyAgent{}, err
+	}
+
+	q := req.URL.Query() //Добавление GET параметров
+	q.Add("search", nameAgent)
+	req.URL.RawQuery = q.Encode()
+	req.Header.Add("Authorization", "Bearer "+idUser)
+
+	resp, err := client.Do(req) //Отправка запроса
+	if err != nil {
+		return SupplyAgent{}, err
+	}
+
+	bodyText, err := ioutil.ReadAll(resp.Body) //Обработка ответа
+	if err != nil {
+		return SupplyAgent{}, err
+	}
+
+	rows := new(RowsAgent) //Создание модели для получения ответа от мойсклад
+	json.Unmarshal([]byte(bodyText), &rows)
+	if len(rows.Rows) == 0 {
+		return SupplyAgent{}, fmt.Errorf("no find products")
+	}
+	result := rows.Rows[0]
+	return result, nil //Возврат готовой модели товара из МойСклад
+}
+
+type RowsAgent struct {
+	Rows []SupplyAgent `json:"rows"`
+}
+type SupplyResult struct {
+	Id         string        `json:"id"`
+	Exceptions []CsvProducts `json:"exceptions"`
 }

@@ -6,7 +6,7 @@ require (
 	github.com/BurntSushi/toml v0.3.1
 	github.com/gocarina/gocsv v0.0.0-20210516172204-ca9e8a8ddea8
 	github.com/labstack/echo v3.3.10+incompatible
-	github.com/labstack/echo/v4 v4.3.0 // indirect
+	github.com/labstack/echo/v4 v4.3.0
 	github.com/sirupsen/logrus v1.8.1
 	github.com/stretchr/testify v1.7.0 // indirect
 	github.com/tealeg/xlsx v1.0.5
