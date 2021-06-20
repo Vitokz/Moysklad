@@ -486,7 +486,7 @@ func (r *Rest) MakeProduct(name string, price float64, desc string, c echo.Conte
 
 func addProductInMS(product *models.NewProduct, id string) (models.ProductDataInMS, error) {
 	new := models.ProductDataInMS{}
-
+	product.Price.Value *= 100
 	mes, err := json.Marshal(product) //Кодирование
 	if err != nil {
 		return models.ProductDataInMS{}, err
