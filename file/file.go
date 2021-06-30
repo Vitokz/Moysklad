@@ -6,10 +6,11 @@ import (
 )
 
 type File struct {  //Структура с открытым файлом xlsx с соотношениями 
-	File *xlsx.File
+	File *xlsx.File  //Ссылка для общения с файлом
 }
 
-func NewFileOpen() *File { //Создание струтуры File
+//Создание структуры для работы с файлом соотношений
+func NewFileOpen() *File { 
 	file, err := xlsx.OpenFile(proto.RELATIONS_FILE_PATH)
 	if err != nil {
 		panic(err)

@@ -1,9 +1,9 @@
 package models
 
 type NewProduct struct {
-	Name        string               `json:"name"`     //Имя товара
-	Price       ProductDataInMSPrice `json:"buyPrice"` //Закупочная Цена Вложенный json
-	Description string               `json:"description"`
+	Name       string               `json:"name"`                 //Имя товара
+	Price      ProductDataInMSPrice `json:"buyPrice"`             //Закупочная Цена Вложенный json
+	Attributes []Attribute          `json:"attributes,omitempty"` //Аттрибуты товара
 }
 
 func NewProductModel(name string, desc string, price float64) *NewProduct {
@@ -12,6 +12,8 @@ func NewProductModel(name string, desc string, price float64) *NewProduct {
 		Price: ProductDataInMSPrice{
 			Value: price,
 		},
-		Description: desc,
+		Attributes: []Attribute{
+			TakeAliasModel(desc),
+		},
 	}
 }

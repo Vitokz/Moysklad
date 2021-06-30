@@ -14,13 +14,16 @@ type NewSupply struct { //Модель данных для создание пр
 	Organiztion SupplyOrganization `json:"organization"` //Ссылка на на твою организацию
 	Agent       SupplyAgent        `json:"agent"`        //Контрагент=поставщик
 	Store       SupplyStore        `json:"store"`        //Ссылка на твой склад
-}
+} //++
+
 type SupplyOrganization struct { //Метаданные организации
 	Meta Meta `json:"meta"`
-}
+} //++
+
 type SupplyAgent struct { //Метаданные агента
 	Meta Meta `json:"meta"`
 }
+
 type SupplyStore struct { //Метаданные склада
 	Meta Meta `json:"meta"`
 }
@@ -37,9 +40,9 @@ type Supply struct { // Структура с id свежесозданной п
 }
 
 type CsvProducts struct { //Структура товаров взятых из CSv файла
-	Name  string `json:"name"`
-	Count int    `json:"count"`
-	Price float64   `json:"price"`
+	Name  string  `json:"name"`
+	Count int     `json:"count"`
+	Price float64 `json:"price"`
 }
 
 type SearchProductInMS struct { //Структура для обработки запроса поиска в rows находятся все подхдящие ответы
@@ -77,7 +80,9 @@ func NewSupplyPosition(m ProductDataInMS) *SupplyPostion {
 
 func MakeNewSupply(nameSupply string, nameAgent string, id string) *NewSupply {
 	agent, err := SearchAgent(nameAgent, id)
+
 	_ = err
+
 	if nameAgent == "Предваритеный счет" {
 		agent = SupplyAgent{
 			Meta: Meta{
@@ -149,6 +154,36 @@ type RowsAgent struct {
 	Rows []SupplyAgent `json:"rows"`
 }
 type SupplyResult struct {
-	Id         string        `json:"id"`
-	Exceptions []CsvProducts `json:"exceptions"`
+	Id         string      `json:"id"`
+	Exceptions []Exception `json:"exceptions"`
+}
+
+func TakeAliasModel(value string) Attribute {
+	return Attribute{
+		Meta: Meta{
+			Href:      "https://online.moysklad.ru/api/remap/1.2/entity/product/metadata/attributes/7ce816a0-d29d-11eb-0a80-01ef00024287",
+			Type:      "attributemetadata",
+			MediaType: "application/json",
+		},
+		ID:    "7ce816a0-d29d-11eb-0a80-01ef00024287",
+		Type:  "text",
+		Name:  "ALIAS",
+		Value: value,
+	}
+}
+
+type Exception struct {
+	Name   string  `json:"name"`
+	Count  int     `json:"count"`
+	Price  float64 `json:"price"`
+	Status string  `json:"status"`
+}
+
+func ExceptionCreate(product CsvProducts, status string) Exception {
+	return Exception{
+		Name:   product.Name,
+		Count:  product.Count,
+		Price:  product.Price,
+		Status: status,
+	}
 }

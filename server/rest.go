@@ -11,11 +11,11 @@ import (
 )
 
 type Rest struct { //Структура моего сервера
-	Config  *models.Config
-	Logger  *logrus.Logger
-	Router  *echo.Echo
-	Handler *handler.Handler
-	Token   *models.Token
+	Config  *models.Config //конфиг сервера
+	Logger  *logrus.Logger //логер сервера
+	Router  *echo.Echo  //сам echo сервер
+	Handler *handler.Handler //Хэндлер
+	Token   *models.Token//токен авторизации
 }
 
 func New(handler *handler.Handler, conf *models.Config) *Rest { //Создание настроек моего сервера
@@ -35,8 +35,6 @@ func (r *Rest) getRoutes() { //Ф-ция эндпоинтов
 	r.Router.GET("/sort", r.AddDescription)
 	r.Router.POST("/makeSupply", r.MakeSupply)
 	r.Router.POST("/addOrRefactor", r.addOrRefactor)
-	//r.Router.POST("/makeProduct", r.MakeProduct)
-	//r.Router.GET("/refactorProduct", r.RefactorProduct)
 	//Добавить эндпоинты получения контр агентов,Добавить получение складов, добавить получение юр лица
 }
 

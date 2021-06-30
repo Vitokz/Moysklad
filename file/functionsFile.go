@@ -8,6 +8,8 @@ import (
 
 var products = make(map[string]string, 0)  //Массив с соотношениями из 1с [имя] = [ключи]
 
+
+//Фнкция которая создает map массив со всеми алиасами
 func (f *File) SortAllNames() (map[string]string,error) {
 	sh, ok := f.File.Sheet["TDSheet"] //Открываю главную страницу в файле с соотношениями
 	defer sh.Close() //По окончании закрываю его
