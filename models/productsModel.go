@@ -22,7 +22,7 @@ type Product struct { // Структура для представления о
 	//Images        images        `json:"images,omitempty"`        // Изображения
 	//MinPrice      price         `json:"minPrice,omitempty"`      // Минимальная цена
 	//SalePrices    []salePrices  `json:"salePrices,omitempty"`    // Цены продажи
-	BuyPrice        buyPrice           `json:"buyPrice,omitempty"` // Закупочная цена
+	BuyPrice buyPrice `json:"buyPrice,omitempty"` // Закупочная цена
 	//Supplier      counterParty  `json:"supplier,omitempty"`      // Метаданные контрагента-поставщика
 	Attributes []Attribute `json:"attributes,omitempty"` // Коллекция доп. полей
 	//Country       country       `json:"country,omitempty"`       // Метаданные Страны
@@ -63,5 +63,16 @@ type XLSXProducts struct { //Структура ассоциотивного м�
 }
 
 type ProductRows struct { //Структура для json ответа запроса всех товаров в МС :Пока что нужно только в эндпоинте /sort
-	Rows []Product `json:"rows"`
+	Meta ProductRowsMeta `json:"meta"`
+	Rows []Product       `json:"rows"`
+}
+
+type ProductRowsMeta struct {
+	Href      string `json:"href"`
+	Type      string `json:"type"`
+	MediaType string `json:"mediaType"`
+	Size      int    `json:"size"`
+	Limit     int    `json:"limit"`
+	Offset    int    `json:"offset"`
+	NextHref  string `json:"nextHref"`
 }

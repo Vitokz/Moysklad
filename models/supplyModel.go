@@ -83,35 +83,35 @@ func MakeNewSupply(nameSupply string, nameAgent string, id string) *NewSupply {
 
 	_ = err
 
-	if nameAgent == "Предваритеный счет" {
-		agent = SupplyAgent{
-			Meta: Meta{
-				Href:         "https://online.moysklad.ru/api/remap/1.2/entity/counterparty/db58c2b4-c1f0-11eb-0a80-007c001a57b0",
-				MetadataHref: "https://online.moysklad.ru/api/remap/1.2/entity/counterparty/metadata",
-				Type:         "counterparty",
-				MediaType:    "application/json",
-				UuidHref:     "https://online.moysklad.ru/app/#company/edit?id=db58c2b4-c1f0-11eb-0a80-007c001a57b0",
-			},
-		}
-	}
+	//if nameAgent == "Предваритеный счет" {
+	//	agent = SupplyAgent{
+	//		Meta: Meta{
+	//			Href:         "https://online.moysklad.ru/api/remap/1.2/entity/counterparty/db58c2b4-c1f0-11eb-0a80-007c001a57b0",
+	//			MetadataHref: "https://online.moysklad.ru/api/remap/1.2/entity/counterparty/metadata",
+	//			Type:         "counterparty",
+	//			MediaType:    "application/json",
+	//			UuidHref:     "https://online.moysklad.ru/app/#company/edit?id=db58c2b4-c1f0-11eb-0a80-007c001a57b0",
+	//		},
+	//	}
+	//}
 	return &NewSupply{
 		Name: nameSupply,
 		Organiztion: SupplyOrganization{
 			Meta: Meta{
-				Href:         "https://online.moysklad.ru/api/remap/1.2/entity/organization/db577e9f-c1f0-11eb-0a80-007c001a57ad",
+				Href:         "https://online.moysklad.ru/api/remap/1.2/entity/organization/2ffd9caf-f840-11eb-0a80-05da0003924f",
 				MetadataHref: "https://online.moysklad.ru/api/remap/1.2/entity/organization/metadata",
 				Type:         "organization",
 				MediaType:    "application/json",
-				UuidHref:     "https://online.moysklad.ru/app/#mycompany/edit?id=db577e9f-c1f0-11eb-0a80-007c001a57ad",
+				UuidHref:     "https://online.moysklad.ru/app/#mycompany/edit?id=2ffd9caf-f840-11eb-0a80-05da0003924f",
 			},
 		},
 		Store: SupplyStore{
 			Meta: Meta{
-				Href:         "https://online.moysklad.ru/api/remap/1.2/entity/store/db58bba2-c1f0-11eb-0a80-007c001a57af",
+				Href:         "https://online.moysklad.ru/api/remap/1.2/entity/store/2fff0410-f840-11eb-0a80-05da00039251",
 				MetadataHref: "https://online.moysklad.ru/api/remap/1.2/entity/store/metadata",
 				Type:         "store",
 				MediaType:    "application/json",
-				UuidHref:     "https://online.moysklad.ru/app/#warehouse/edit?id=db58bba2-c1f0-11eb-0a80-007c001a57af",
+				UuidHref:     "https://online.moysklad.ru/app/#warehouse/edit?id=2fff0410-f840-11eb-0a80-05da00039251",
 			},
 		},
 		Agent: agent,
@@ -161,13 +161,13 @@ type SupplyResult struct {
 func TakeAliasModel(value string) Attribute {
 	return Attribute{
 		Meta: Meta{
-			Href:      "https://online.moysklad.ru/api/remap/1.2/entity/product/metadata/attributes/7ce816a0-d29d-11eb-0a80-01ef00024287",
+			Href:      "https://online.moysklad.ru/api/remap/1.2/entity/product/metadata/attributes/ccf8afed-f851-11eb-0a80-05da0004ace2",
 			Type:      "attributemetadata",
 			MediaType: "application/json",
 		},
-		ID:    "7ce816a0-d29d-11eb-0a80-01ef00024287",
+		ID:    "ccf8afed-f851-11eb-0a80-05da0004ace2",
 		Type:  "text",
-		Name:  "ALIAS",
+		Name:  "Alias",
 		Value: value,
 	}
 }

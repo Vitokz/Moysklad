@@ -1,12 +1,13 @@
 package proto
 
 const (
+	LIMIT_PRODUCTS      = 1000
 	NEW_FILE_XLS        = "proto/priceList/Товары.xls"
 	NEW_FILE_CSV        = "proto/priceList/Товары.csv"
 	RELATIONS_FILE_PATH = "proto/relations/Relation.xlsx"
 	CONFIG_REST_PATH    = "config/rest.toml"
-	LOGIN               = "admin@myskladapptest"
-	PASSWORD            = "9a99f03fd9"
+	LOGIN               = "admin@amritasportwork"
+	PASSWORD            = "2823e8e337"
 )
 
 const ( //Urls
@@ -31,15 +32,7 @@ type CSVIDS struct {
 
 func StatCSVFile(agent string) CSVIDS {
 	switch agent {
-	case "Предваритеный счет":
-		return CSVIDS{
-			Number: 0,
-			Name:   1,
-			Price:  6,
-			Count:  8,
-			Sum:    9,
-		}
-	case "АРТ":
+	case "АРТ Современные научные технологии":
 		return CSVIDS{
 			Number: 0,
 			Name:   3,
@@ -47,7 +40,7 @@ func StatCSVFile(agent string) CSVIDS {
 			Count:  5,
 			Sum:    7,
 		}
-	case "Биг":
+	case "БИГ Мэджик Фуд":
 		return CSVIDS{
 			Number: 0,
 			Name:   1,
@@ -71,7 +64,7 @@ func StatCSVFile(agent string) CSVIDS {
 			Count:  8,
 			Sum:    10,
 		}
-	case "Ёбатончики":
+	case "Ё-Батоны":
 		return CSVIDS{
 			Number: 1,
 			Name:   3,
@@ -87,7 +80,7 @@ func StatCSVFile(agent string) CSVIDS {
 			Count:  24,
 			Sum:    33,
 		}
-	case "ОптСтронг":
+	case "Оптстронг Бурганов":
 		return CSVIDS{
 			Number: 0,
 			Name:   3,
@@ -111,7 +104,7 @@ func StatCSVFile(agent string) CSVIDS {
 			Count:  8,
 			Sum:    10,
 		}
-	case "СпортФуд":
+	case "ИП Дейкина О.Е.":
 		return CSVIDS{
 			Number: 1,
 			Name:   5,
@@ -119,7 +112,7 @@ func StatCSVFile(agent string) CSVIDS {
 			Count:  50,
 			Sum:    68,
 		}
-	case "ФитбарОпт":
+	case "Фитбаропт":
 		return CSVIDS{
 			Number: 1,
 			Name:   3,
@@ -127,7 +120,7 @@ func StatCSVFile(agent string) CSVIDS {
 			Count:  35,
 			Sum:    49,
 		}
-	case "ФитХаус":
+	case "Фитхаус (Чечня)":
 		return CSVIDS{
 			Number: 0,
 			Name:   1,

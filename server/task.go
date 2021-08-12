@@ -125,6 +125,7 @@ func (r *Rest) AddDescription(c echo.Context) error {
 		r.Logger.Errorf("Failed processing add to description: %s\n", err)
 		return echo.NewHTTPError(http.StatusInternalServerError)
 	}
+
 	return c.JSON(http.StatusOK, "All requests are passed")
 }
 
@@ -133,23 +134,74 @@ func takeProducts(id string) (*models.ProductRows, error) {
 
 	client := &http.Client{}
 
-	req, err := http.NewRequest("GET", proto.PRODUCTS_IN_MY_SKLAD, nil)
+	req, err := http.NewRequest("GET", proto.PRODUCTS_IN_MY_SKLAD+"?limit=1000", nil)
 	if err != nil {
 		return nil, err
 	}
+
 	req.Header.Add("Authorization", "Bearer "+id)
 	resp, err := client.Do(req)
 	if err != nil {
 		return nil, err
 	}
+
 	bodyText, err := ioutil.ReadAll(resp.Body)
 	if err != nil {
 		return nil, err
 	}
+
 	err = checkError(bodyText)
 	if err != nil {
 		return nil, err
 	}
+
+	result := new(models.ProductRows)
+
+	json.Unmarshal([]byte(bodyText), &result)
+
+	if size := result.Meta.Size; size > proto.LIMIT_PRODUCTS {
+		offset := proto.LIMIT_PRODUCTS
+		for size > offset {
+
+			prds, err := takeProductsWithOffset(id, strconv.Itoa(offset))
+			if err != nil {
+				return nil, err
+			}
+			offset = prds.Meta.Offset + proto.LIMIT_PRODUCTS
+			for i := range prds.Rows {
+				result.Rows = append(result.Rows, prds.Rows[i])
+			}
+		}
+
+	}
+
+	return result, nil
+}
+
+func takeProductsWithOffset(id string, offset string) (*models.ProductRows, error) {
+	client := &http.Client{}
+
+	req, err := http.NewRequest("GET", proto.PRODUCTS_IN_MY_SKLAD+"?limit=1000&offset="+offset, nil)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Add("Authorization", "Bearer "+id)
+	resp, err := client.Do(req)
+	if err != nil {
+		return nil, err
+	}
+
+	bodyText, err := ioutil.ReadAll(resp.Body)
+	if err != nil {
+		return nil, err
+	}
+
+	err = checkError(bodyText)
+	if err != nil {
+		return nil, err
+	}
+
 	result := new(models.ProductRows)
 
 	json.Unmarshal([]byte(bodyText), &result)
@@ -175,10 +227,12 @@ func (r *Rest) checkingProducts(XL *[]models.XLSXProducts, MS *models.ProductRow
 	r.Logger.WithFields(logrus.Fields{
 		"event": "start to find identical in products",
 	})
+
 	for _, Xv := range *XL { //Цикл проверки всех товаров из relations
 		for _, Mv := range MS.Rows { //Цикл для проверки всех товаров в мс
 			if Xv.Name == Mv.Name {
 				key, err := findAttributeAliasId(Mv)
+
 				if err != nil {
 					attribute := models.TakeAliasModel(Xv.Keys)
 					Mv.Attributes = append(Mv.Attributes, attribute)
@@ -202,7 +256,7 @@ func (r *Rest) checkingProducts(XL *[]models.XLSXProducts, MS *models.ProductRow
 //Ищет номер ключа доп. поля ALIAS
 func findAttributeAliasId(product models.Product) (int, error) {
 	for i, attr := range product.Attributes {
-		if attr.Name == "ALIAS" {
+		if attr.Name == "Alias" {
 			return i, nil
 		}
 	}
@@ -225,6 +279,7 @@ func (r *Rest) requestToPut(m models.Product) error {
 		r.Logger.Errorf("Request fail: %s\n", err)
 		return err
 	}
+
 	req.Header.Add("Authorization", "Bearer "+r.Token.Access_token)
 	req.Header.Set("Content-Type", "application/json; charset=UTF-8")
 
@@ -233,12 +288,15 @@ func (r *Rest) requestToPut(m models.Product) error {
 		r.Logger.Errorf("Failed processing take products request: %s\n", err)
 		return echo.NewHTTPError(http.StatusInternalServerError)
 	}
+
 	bodyText, err := ioutil.ReadAll(resp.Body)
 	if err != nil {
 		r.Logger.WithError(err).Error()
 		return echo.NewHTTPError(http.StatusInternalServerError)
 	}
+
 	err = checkError(bodyText)
+
 	if err != nil {
 		r.Logger.Errorf("Failed : %s\n", err)
 		return echo.NewHTTPError(http.StatusInternalServerError)
@@ -259,49 +317,49 @@ func (r *Rest) MakeSupply(c echo.Context) error {
 		r.Logger.Error(fmt.Errorf("поле nameSupply пустует"))
 		return echo.NewHTTPError(http.StatusInternalServerError)
 	}
-
+   fmt.Println(1)
 	nameAgent := c.FormValue("agent") //Контрагент приемки
 	if nameAgent == "" {
 		r.Logger.Error(fmt.Errorf("поле nameAgent пустует"))
 		return echo.NewHTTPError(http.StatusInternalServerError)
 	}
-
+	fmt.Println(1)
 	newFile, err := c.FormFile("file") // Файл xls с данными
 	if err != nil {
 		r.Logger.Errorf("Failed: %v", err)
 		return err
 	}
-
+	fmt.Println(1)
 	fileName, err := createFile(*newFile)
 	if err != nil {
 		r.Logger.Errorf("Failed: %v", err)
 		return err
 	}
-
+	fmt.Println(1)
 	supply, err := makeNewSupplyInMS(r.Token.Access_token, nameSupply, nameAgent) //Создание новой приемки в мойсклад
 	if err != nil {
 		r.Logger.Errorf("Failed: %v", err)
 		return err
 	}
-
+	fmt.Println(1)
 	file, err := openCSV(fileName) //Открытие csv файла поставщика
 	if err != nil {
 		r.Logger.Errorf("Failed: %v", err)
 		return err
 	}
-
+	fmt.Println(1)
 	products, err := CSVRows(file, nameAgent) //Парсинг файла(Достает все строки с товарами и берет нужную информацию)
 	if err != nil {
 		r.Logger.Errorf("Failed: %v", err)
 		return err
 	}
-
+	fmt.Println(1)
 	err, exceptions := findProductsInMs(*products, r.Token.Access_token, supply.Id) //Поиск продукта в мойсклад и в случае успеха добавление в приемку
 	if err != nil {
 		r.Logger.Errorf("Failed: %v", err)
 		return err
 	}
-
+	fmt.Println(1)
 	_ = exceptions
 	r.Logger.WithFields(logrus.Fields{
 		"status": "ok",
