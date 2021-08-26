@@ -6,7 +6,7 @@ const (
 	NEW_FILE_CSV        = "proto/priceList/Товары.csv"
 	RELATIONS_FILE_PATH = "proto/relations/Relation.xlsx"
 	CONFIG_REST_PATH    = "config/rest.toml"
-	LOGIN               = "admin@amritasportwork"
+	LOGIN               = ""
 	PASSWORD            = "2823e8e337"
 )
 
